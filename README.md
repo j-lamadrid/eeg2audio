@@ -546,8 +546,3 @@ for Music Information Retrieval Conference, Suzhou, China.
 "MAD-EEG: an EEG Dataset for Decoding Auditory Attention to a Target Instrument
 in Polyphonic Music." Speech, Music and Mind (SMM), Satellite Workshop of
 Interspeech 2019, Vienna, Austria. hal-02291882v1.
-
-## License
-
-No license file is currently included in this repository. Add a `LICENSE` file
-before distributing or publishing the project.
