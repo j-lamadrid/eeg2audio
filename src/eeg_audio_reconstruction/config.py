@@ -57,6 +57,7 @@ class DiffusionConfig:
     timesteps: int = 100
     beta_start: float = 1e-4
     beta_end: float = 0.02
+    target_alpha_bar: float | None = None
 
 
 def dataclass_to_dict(config: Any) -> dict[str, Any]:
@@ -74,4 +75,3 @@ def save_yaml(path: str | Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:
         yaml.safe_dump(payload, handle, sort_keys=False)
-

@@ -10,6 +10,7 @@ bootstrap()
 from eeg_audio_reconstruction.data import MADEEGDataset
 from eeg_audio_reconstruction.diffusion import DiffusionSchedule
 from eeg_audio_reconstruction.features import LogMelExtractor
+from eeg_audio_reconstruction.latent import denormalize_latent, normalize_latent
 from eeg_audio_reconstruction.models import ConditionalLatentDenoiser, DirectMelRegressor, SpectrogramAutoencoder
 from eeg_audio_reconstruction.train_utils import get_device, seed_everything
 
@@ -34,12 +35,19 @@ def main() -> None:
     autoencoder = SpectrogramAutoencoder().to(device)
     recon = autoencoder(mel)
     latent = autoencoder.encode(mel)
+    latent_stats = {
+        "mean": latent.mean(dim=(0, 2, 3)).detach().cpu().tolist(),
+        "std": latent.std(dim=(0, 2, 3)).clamp_min(1e-6).detach().cpu().tolist(),
+        "eps": 1e-6,
+    }
+    normalized_latent = normalize_latent(latent, latent_stats)
+    restored_latent = denormalize_latent(normalized_latent, latent_stats)
 
-    schedule = DiffusionSchedule(timesteps=4).to(device)
+    schedule = DiffusionSchedule(timesteps=4, target_alpha_bar=1e-3).to(device)
     denoiser = ConditionalLatentDenoiser(latent_channels=latent.shape[1], model_channels=32, num_res_blocks=2).to(device)
-    timesteps = torch.randint(0, schedule.timesteps, (latent.shape[0],), device=device)
-    noise = torch.randn_like(latent)
-    noisy = schedule.q_sample(latent, timesteps, noise)
+    timesteps = torch.randint(0, schedule.timesteps, (normalized_latent.shape[0],), device=device)
+    noise = torch.randn_like(normalized_latent)
+    noisy = schedule.q_sample(normalized_latent, timesteps, noise)
     pred_noise = denoiser(noisy, timesteps, eeg)
 
     baseline = DirectMelRegressor().to(device)
@@ -51,6 +59,8 @@ def main() -> None:
     print(f"mel: {tuple(mel.shape)}")
     print(f"ae_recon: {tuple(recon.shape)}")
     print(f"latent: {tuple(latent.shape)}")
+    print(f"latent_roundtrip_ok: {torch.allclose(restored_latent, latent, atol=1e-6)}")
+    print(f"terminal_alpha_bar: {float(schedule.alpha_bars[-1]):.6f}")
     print(f"pred_noise: {tuple(pred_noise.shape)}")
     print(f"baseline_pred: {tuple(baseline_pred.shape)}")
     print("smoke_test_ok")
@@ -59,4 +69,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

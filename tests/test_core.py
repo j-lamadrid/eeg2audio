@@ -18,6 +18,7 @@ if str(SRC) not in sys.path:
 from eeg_audio_reconstruction.data import MADEEGDataset
 from eeg_audio_reconstruction.diffusion import DiffusionSchedule
 from eeg_audio_reconstruction.features import LogMelExtractor
+from eeg_audio_reconstruction.latent import denormalize_latent, normalize_latent
 from eeg_audio_reconstruction.models import ConditionalLatentDenoiser, DirectMelRegressor, SpectrogramAutoencoder
 
 
@@ -57,6 +58,20 @@ class CoreSmokeTests(unittest.TestCase):
         baseline_pred = baseline(eeg)
         self.assertEqual(tuple(baseline_pred.shape), (2, 1, 128, 64))
 
+    def test_scaled_diffusion_schedule_and_latent_stats(self) -> None:
+        schedule = DiffusionSchedule(timesteps=8, target_alpha_bar=1e-3)
+        self.assertLess(abs(float(schedule.alpha_bars[-1]) - 1e-3), 1e-5)
+
+        latent = torch.randn(2, 3, 4, 5)
+        stats = {
+            "mean": [0.5, -0.25, 1.0],
+            "std": [2.0, 0.5, 4.0],
+            "eps": 1e-6,
+        }
+        normalized = normalize_latent(latent, stats)
+        restored = denormalize_latent(normalized, stats)
+        self.assertTrue(torch.allclose(restored, latent, atol=1e-6))
+
     def _make_synthetic_dataset(self, root: Path) -> tuple[Path, Path]:
         hdf5_path = root / "synthetic.hdf5"
         yaml_path = root / "synthetic.yaml"
@@ -85,4 +100,3 @@ class CoreSmokeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

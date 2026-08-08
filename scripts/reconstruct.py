@@ -14,6 +14,7 @@ from eeg_audio_reconstruction.config import DiffusionConfig, FeatureConfig
 from eeg_audio_reconstruction.data import MADEEGDataset
 from eeg_audio_reconstruction.diffusion import DiffusionSchedule
 from eeg_audio_reconstruction.features import LogMelExtractor
+from eeg_audio_reconstruction.latent import denormalize_latent
 from eeg_audio_reconstruction.models import ConditionalLatentDenoiser, DirectMelRegressor, SpectrogramAutoencoder
 from eeg_audio_reconstruction.train_utils import get_device, load_checkpoint, seed_everything
 from eeg_audio_reconstruction.visualization import save_mel_image
@@ -32,6 +33,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default="auto")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--no-audio", action="store_true")
+    parser.add_argument("--stochastic", action="store_true", help="Use stochastic DDPM sampling instead of deterministic posterior means.")
     return parser.parse_args()
 
 
@@ -91,7 +93,14 @@ def reconstruct_ldm(args: argparse.Namespace, eeg: torch.Tensor, device: torch.d
     schedule = DiffusionSchedule(**diffusion_config.__dict__).to(device)
     latent_shape = tuple(ldm_checkpoint.get("latent_shape", autoencoder.latent_shape))
     with torch.no_grad():
-        latent = schedule.sample(denoiser, eeg=eeg, shape=(1, *latent_shape), device=device)
+        latent = schedule.sample(
+            denoiser,
+            eeg=eeg,
+            shape=(1, *latent_shape),
+            device=device,
+            stochastic=args.stochastic,
+        )
+        latent = denormalize_latent(latent, ldm_checkpoint.get("latent_stats"))
         return autoencoder.decode(latent).clamp(-1.0, 1.0)
 
 
@@ -113,4 +122,3 @@ def load_feature_config(args: argparse.Namespace) -> FeatureConfig:
 
 if __name__ == "__main__":
     main()
-

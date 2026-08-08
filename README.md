@@ -11,7 +11,7 @@ diffusion model (LDM):
 4. Decode sampled latents back to mel spectrograms and optionally reconstruct
    waveform audio with Griffin-Lim.
 
-The older notebook experiments are preserved under `notebooks/experiments/`.
+The consolidated project demo is `notebook.ipynb`.
 Figures and the presentation are under `assets/`; broken prototype scripts are
 under `legacy/`.
 
@@ -19,6 +19,7 @@ under `legacy/`.
 
 - `src/eeg_audio_reconstruction/`: package code for data, features, models,
   diffusion, checkpointing, and visualization.
+- `notebook.ipynb`: one end-to-end demo covering the CNN baseline and LDM.
 - `scripts/`: command-line workflows.
 - `configs/`: documented default settings.
 - `tests/`: shape and dataset smoke tests.
@@ -57,6 +58,11 @@ Then train the EEG-conditioned latent diffusion denoiser:
 .\.env\Scripts\python.exe scripts\train_ldm.py --autoencoder checkpoints\autoencoder.pt --epochs 40 --batch-size 16
 ```
 
+The LDM trainer standardizes autoencoder latents before diffusion and stores
+the latent statistics in `checkpoints/ldm.pt`. The default diffusion schedule is
+rescaled to end near `alpha_bar=0.001`, so sampling starts from a noise-like
+latent distribution instead of from a mismatched scale.
+
 Reconstruct a sample after both checkpoints exist:
 
 ```powershell
@@ -90,10 +96,10 @@ Run a smoke test against the local dataset:
 
 ## Notes on the Previous AudioLDM Attempt
 
-The notebooks tried to fine-tune `cvssp/audioldm2-music` directly, but the
-AudioLDM UNet, prompt embeddings, VAE inputs, and scheduler objective were not
-wired with compatible shapes. The new implementation keeps the LDM idea as the
-primary method while using a project-local latent space that is small enough to
-train on this dataset. AudioLDM can still be revisited later as a pretrained
-decoder or prior, but it should be added as an adapter after this compact LDM
-has produced measurable baselines.
+The removed exploratory notebooks tried to fine-tune `cvssp/audioldm2-music`
+directly, but the AudioLDM UNet, prompt embeddings, VAE inputs, and scheduler
+objective were not wired with compatible shapes. The new implementation keeps
+the LDM idea as the primary method while using a project-local latent space that
+is small enough to train on this dataset. AudioLDM can still be revisited later
+as a pretrained decoder or prior, but it should be added as an adapter after
+this compact LDM has produced measurable baselines.

@@ -15,6 +15,7 @@ from eeg_audio_reconstruction.config import DenoiserConfig, DiffusionConfig, Fea
 from eeg_audio_reconstruction.data import MADEEGDataset
 from eeg_audio_reconstruction.diffusion import DiffusionSchedule
 from eeg_audio_reconstruction.features import LogMelExtractor
+from eeg_audio_reconstruction.latent import estimate_latent_stats, normalize_latent
 from eeg_audio_reconstruction.models import ConditionalLatentDenoiser, SpectrogramAutoencoder
 from eeg_audio_reconstruction.train_utils import (
     count_parameters,
@@ -35,6 +36,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--timesteps", type=int, default=100)
+    parser.add_argument("--target-alpha-bar", type=float, default=1e-3)
+    parser.add_argument("--latent-stats-batches", type=int, default=None)
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--device", default="auto")
     parser.add_argument("--seed", type=int, default=42)
@@ -70,7 +73,7 @@ def main() -> None:
         cond_dim=args.cond_dim,
         num_res_blocks=args.num_res_blocks,
     )
-    diffusion_config = DiffusionConfig(timesteps=args.timesteps)
+    diffusion_config = DiffusionConfig(timesteps=args.timesteps, target_alpha_bar=args.target_alpha_bar)
     denoiser = ConditionalLatentDenoiser(
         latent_channels=autoencoder.latent_channels,
         model_channels=denoiser_config.model_channels,
@@ -99,6 +102,16 @@ def main() -> None:
     print(f"device: {device}")
     print(f"samples: {len(dataset)}")
     print(f"trainable parameters: {count_parameters(denoiser):,}")
+    latent_stats = estimate_latent_stats(
+        autoencoder,
+        extractor,
+        loader,
+        device,
+        max_batches=args.latent_stats_batches,
+    )
+    print(f"latent mean: {[round(value, 4) for value in latent_stats['mean']]}")
+    print(f"latent std: {[round(value, 4) for value in latent_stats['std']]}")
+    print(f"terminal alpha_bar: {float(schedule.alpha_bars[-1]):.6f}")
 
     for epoch in range(1, args.epochs + 1):
         denoiser.train()
@@ -110,7 +123,7 @@ def main() -> None:
             source_sr = batch["audio_sample_rate"]
             with torch.no_grad():
                 mel = extractor(audio, source_sr).to(device)
-                clean_latent = autoencoder.encode(mel)
+                clean_latent = normalize_latent(autoencoder.encode(mel), latent_stats)
 
             noise = torch.randn_like(clean_latent)
             timesteps = torch.randint(0, schedule.timesteps, (clean_latent.shape[0],), device=device)
@@ -138,10 +151,10 @@ def main() -> None:
             feature_config=asdict(feature_config),
             autoencoder_config=ae_config,
             latent_shape=autoencoder.latent_shape,
+            latent_stats=latent_stats,
         )
     dataset.close()
 
 
 if __name__ == "__main__":
     main()
-

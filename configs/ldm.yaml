@@ -17,6 +17,7 @@ diffusion:
   timesteps: 100
   beta_start: 0.0001
   beta_end: 0.02
+  target_alpha_bar: 0.001
 denoiser:
   model_channels: 96
   cond_dim: 256
@@ -27,4 +28,3 @@ training:
   batch_size: 16
   autoencoder_lr: 0.0002
   ldm_lr: 0.0001
-

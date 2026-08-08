@@ -176,7 +176,7 @@ class ConditionalLatentDenoiser(nn.Module):
 
 
 class DirectMelRegressor(nn.Module):
-    """Baseline EEG-to-mel model with no diffusion."""
+    """CNN baseline that maps EEG directly to a normalized mel spectrogram."""
 
     def __init__(
         self,
@@ -216,4 +216,3 @@ class DirectMelRegressor(nn.Module):
         emb = self.eeg_encoder(eeg)
         h = self.fc(emb).view(eeg.shape[0], -1, self.base_h, self.base_w)
         return self.decoder(h)
-
