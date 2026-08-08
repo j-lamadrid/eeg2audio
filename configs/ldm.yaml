@@ -1,0 +1,30 @@
+data:
+  hdf5_path: data/madeeg_preprocessed.hdf5
+  metadata_path: data/madeeg_preprocessed.yaml
+  segment_seconds: 1.0
+  average_repetitions: 4
+  target: stimulus
+features:
+  sample_rate: 16000
+  n_fft: 1024
+  hop_length: 256
+  n_mels: 128
+  frames: 64
+autoencoder:
+  latent_channels: 8
+  base_channels: 32
+diffusion:
+  timesteps: 100
+  beta_start: 0.0001
+  beta_end: 0.02
+denoiser:
+  model_channels: 96
+  cond_dim: 256
+  num_res_blocks: 6
+training:
+  autoencoder_epochs: 20
+  ldm_epochs: 40
+  batch_size: 16
+  autoencoder_lr: 0.0002
+  ldm_lr: 0.0001
+

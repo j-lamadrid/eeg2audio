@@ -1,0 +1,17 @@
+data:
+  hdf5_path: data/madeeg_preprocessed.hdf5
+  metadata_path: data/madeeg_preprocessed.yaml
+  segment_seconds: 1.0
+  average_repetitions: 4
+  target: stimulus
+features:
+  sample_rate: 16000
+  n_fft: 1024
+  hop_length: 256
+  n_mels: 128
+  frames: 64
+training:
+  epochs: 30
+  batch_size: 16
+  lr: 0.0002
+
