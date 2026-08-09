@@ -1,4 +1,4 @@
-# EEG Audio Reconstruction
+# EEG Audio Reconstruction (2024 Cognitive Science Research Fellowship)
 
 CNN and latent-diffusion methods for reconstructing short audio windows from
 music-evoked EEG responses.
